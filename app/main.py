@@ -32,7 +32,7 @@ async def handle_task(data: dict):
             return {"error": "Invalid round"}
         pass
     print(data)
-    return {"message": "Task recieved", "data": data}
+    return {"message": "Task recieved", "data": data} 
     
 
 # @app.get("/")
