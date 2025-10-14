@@ -2,6 +2,11 @@ from fastapi import FastAPI
 import os
 
 def round1():
+    # write code with llm
+    # create github repo 
+    # enable github pages 
+    # deploy github pages
+    # push files to repo
     pass
 
 def round2():
