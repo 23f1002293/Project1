@@ -3,20 +3,9 @@ import requests
 def send_task():
     payload = {
   "email": "student@example.com",
-  "secret": "...",
-  "task": "captcha-solver-...",
+  "secret": "a46mnl09p7n9",
   "round": 1,
-  "nonce": "ab12-...",
-  "brief": "Create a captcha solver that handles ?url=https://.../image.png. Default to attached sample.",
-  "checks": [
-    "Repo has MIT license"
-    "README.md is professional",
-    "Page displays captcha URL passed at ?url=...",
-    "Page displays solved captcha text within 15 seconds",
-  ],
-  "evaluation_url": "https://example.com/notify",
-  "attachments": [{ "name": "sample.png", "url": "data:image/png;base64,iVBORw..." }]
-}
+    }
     
     response = requests.post("https://laughing-broccoli-x5x9r775pwrwc6j7g-8000.app.github.dev/handle_task", json=payload)
     print(response.json())

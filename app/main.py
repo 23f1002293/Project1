@@ -15,6 +15,7 @@ def round2():
 app = FastAPI()
 
 def validate_secret(secret: str) -> bool:
+    print(os.getenv("SECRET"))
     return secret == os.getenv("SECRET")
 
 
@@ -30,9 +31,9 @@ async def handle_task(data: dict):
         else:
             return {"error": "Invalid round"}
         pass
-    return {"message": "Task recieved", "data": data}
     print(data)
-    return {"status": "Task received", "data": data}
+    return {"message": "Task recieved", "data": data}
+    
 
 # @app.get("/")
 # def read_root():
