@@ -237,7 +237,24 @@ async def handle_task(payload: dict):
 
                 # Step 4: Enable GitHub Pages
                 enable_pages(repo_full_name)
-
+                # Step 5: Enable notification
+                post_message = {
+                        "email": f"{payload.get('email')}",
+                        "task": f"{payload.get('task')}",
+                        "round": 1,
+                        "nonce": f"{payload.get('nonce')}",
+                        "repo_url": f"{repo_info.get('html_url')}",
+                        "commit_sha": f"{repo_info.get('default_branch')}",
+                        "page_url": f"https://{repo_full_name.split('/')[0]}.github.io/{repo_full_name.split('/')[1]}/",
+                    }
+                try:
+                        eval_response = requests.post(payload["evaluation_url"], json=post_message)
+                        if eval_response.status_code == 200:
+                            print("📬 Evaluation URL notified successfully.")
+                        else:
+                            print(f"⚠️ Error notifying evaluation URL: {eval_response.content}")
+                except Exception as e:
+                        print(f"⚠️ Exception notifying evaluation URL: {e}")
                 print("\n✅ Project generated, committed, and deployed successfully!")
                 return {"message": "Task recieved and completed", "data": payload} 
 
