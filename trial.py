@@ -109,7 +109,9 @@ def generate_app_from_brief(brief):
     {{
       "files": {{
         "main.py": "<code here>",
-        "README.md": '<complete markdown readme with sections: Summary, Setup, Usage, Code Explanation, License>'
+        "README.md": '<complete markdown readme with sections: Summary, Setup, Usage, Code Explanation, License>',
+        "index.html": "<complete html code with interactive form: title, input field, submit button, JS to handle form and display results>",
+
       }}
     }}
     Do not include explanations or markdown formatting.
@@ -231,7 +233,7 @@ async def handle_task(payload: dict):
                     create_file(repo_full_name, path, content)
 
                 # Step 3: Add the existing static index.html
-                create_file(repo_full_name, "index.html", index_html_content)
+                # create_file(repo_full_name, "index.html", index_html_content)
 
                 # Step 4: Enable GitHub Pages
                 enable_pages(repo_full_name)
@@ -242,4 +244,4 @@ async def handle_task(payload: dict):
 
 if __name__ == "__main__":
     import uvicorn
-    uvicorn.run(app, host="0.0.0.0", port=8100)
+    uvicorn.run(app, host="0.0.0.0", port=8000)
