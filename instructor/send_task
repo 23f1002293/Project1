@@ -3,9 +3,20 @@ import requests
 def send_task():
     payload = {
   "email": "student@example.com",
-  "secret": "a46mnl09p7n9",
+  "secret": "a46mnl09p7n9export",
+  "task": "Fib",
   "round": 1,
-    }
+  "nonce": "125ab",
+  "brief": "Create a program that prints the first 10 fibonocci numbers",
+  "checks": [
+    "Repo has MIT license",
+    "README.md is professional",
+    "Page displays captcha URL passed at ?url=...",
+    "Page displays solved captcha text within 15 seconds",
+  ],
+  "evaluation_url": "https://example.com/notify",
+  "attachments": [{ "name": "sample.png", "url": "data:image/png;base64,iVBORw..." }]
+}
     
     response = requests.post("https://laughing-broccoli-x5x9r775pwrwc6j7g-8000.app.github.dev/handle_task", json=payload)
     print(response.json())

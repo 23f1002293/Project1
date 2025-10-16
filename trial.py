@@ -208,29 +208,37 @@ def enable_pages(repo_full_name):
 # ==============================================================
 # 4. MAIN PIPELINE
 # ==============================================================
+def validate_secret(secret: str) -> bool:
+    print(os.getenv("SECRET"))
+    return secret == os.getenv("SECRET")
 
 @app.post("/handle_task")
 async def handle_task(payload: dict):
     print("🚀 Starting Auto App Builder...\n")
+    if not validate_secret(payload.get("secret", "")):
+        return {"error": "Invalid secret"}
+    else:
+        if payload.get("round") == 1:
+            repo_info = create_repo(payload)
+            if repo_info:
+                repo_full_name = repo_info["full_name"]
 
-    repo_info = create_repo(payload)
-    if repo_info:
-        repo_full_name = repo_info["full_name"]
+                # Step 1: Ask Gemini to generate the app files
+                app_files = generate_app_from_brief(payload["brief"])
 
-        # Step 1: Ask Gemini to generate the app files
-        app_files = generate_app_from_brief(payload["brief"])
+                # Step 2: Create each generated file in GitHub
+                for path, content in app_files.items():
+                    create_file(repo_full_name, path, content)
 
-        # Step 2: Create each generated file in GitHub
-        for path, content in app_files.items():
-            create_file(repo_full_name, path, content)
+                # Step 3: Add the existing static index.html
+                create_file(repo_full_name, "index.html", index_html_content)
 
-        # Step 3: Add the existing static index.html
-        create_file(repo_full_name, "index.html", index_html_content)
+                # Step 4: Enable GitHub Pages
+                enable_pages(repo_full_name)
 
-        # Step 4: Enable GitHub Pages
-        enable_pages(repo_full_name)
+                print("\n✅ Project generated, committed, and deployed successfully!")
+                return {"message": "Task recieved and completed", "data": payload} 
 
-        print("\n✅ Project generated, committed, and deployed successfully!")
 
 if __name__ == "__main__":
     import uvicorn
