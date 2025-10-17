@@ -1,8 +1,13 @@
-from google import generativeai as genai
-import os
-import requests
+
+import re, os
 import json
 import base64
+from fastapi import FastAPI
+import requests
+from google import generativeai as genai
+
+# ==============================================================
+# 1. CONFIGURATION
 # ==============================================================
 # --- Load environment variables ---
 GITHUB_SECRET = os.getenv("GITHUB_SECRET")
@@ -15,8 +20,40 @@ if not GEMINI_API_KEY:
 
 # --- Configure Gemini ---
 genai.configure(api_key=GEMINI_API_KEY)
+
+
+# --- GitHub API base URL ---
 API_URL = "https://api.github.com"
 
+# ==============================================================
+# 2. GEMINI: GENERATE APP CODE FROM BRIEF
+# ==============================================================
+def save_payload_to_tmp(round_number: int, payload: dict):
+    """Saves the JSON payload for a specific round to the local /tmp directory."""
+    filename = f"/tmp/round{round_number}_payload.json"
+    
+    try:
+        with open(filename, "w") as f:
+            json.dump(payload, f, indent=2)
+        print(f"💾 Payload for Round {round_number} saved to ephemeral storage: {filename}")
+    except Exception as e:
+        print(f"❌ Error writing to /tmp: {e}")
+
+def load_payload_from_tmp(round_number: int):
+    """Loads the JSON payload for a specific round from the local /tmp directory."""
+    filename = f"/tmp/round{round_number}_payload.json"
+    
+    try:
+        with open(filename, "r") as f:
+            content = f.read()
+        print(f"✅ Loaded payload for Round {round_number} from ephemeral storage: {filename}")
+        return json.loads(content)
+    except FileNotFoundError:
+        # Raise an error if the payload for the first round is missing
+        raise FileNotFoundError(f"File {filename} not found in /tmp. Data may have been lost due to instance recycle.")
+    except Exception as e:
+        print(f"❌ Error reading from /tmp: {e}")
+        raise
 
 def extract_json(text):
     match = re.search(r"\{.*\}", text, re.DOTALL)
@@ -109,7 +146,7 @@ def upload_attachments(repo_full_name, attachments):
                 return{"status_code": {response.status_code}, "message": f"⚠️ Failed to upload '{name}': {response.content}"}
 
         except Exception as e:
-            return {"status_code": {response.status_code}, "message": f"❌ Error processing {name}: {e}"}    
+            print (f"❌ Error processing {name}: {e}")
 
 # ==============================================================
 # 3. GITHUB AUTOMATION FUNCTIONS
@@ -273,6 +310,7 @@ def enable_pages(repo_full_name):
 # 4. MAIN PIPELINE
 # ==============================================================
 def validate_secret(secret: str) -> bool:
+    print(os.getenv("SECRET"))
     return secret == os.getenv("SECRET")
 
 def evaluate_task(payload: dict, repo_info, sha, repo_full_name, round):
@@ -295,18 +333,13 @@ def evaluate_task(payload: dict, repo_info, sha, repo_full_name, round):
             except Exception as e:
                 print(f"⚠️ Exception notifying evaluation URL: {e}")
 
-        if round == 1:
-            print(f"\n✅ Project (Round {round}  - code generated, committed, and deployed successfully!")
-        else:
-            print(f"\n✅ Project (Round {round}  - code updated, committed, and deployed successfully!")
-
-        return {"user_code": 200, "message": "Task recieved and completed", "data": payload} 
+        print("\n✅ Project (round 1 - code generated, committed, and deployed successfully!")
+        return {"user_code": 200, "message": "Task recieved and completed for round 1", "data": payload} 
 
 
 def round1(payload: dict):
     #  Save round 1 payload to file
-    with open("round1_payload.json", "w") as f:
-        json.dump(payload, f, indent=2)
+    save_payload_to_tmp(1, payload)
 
     repo_info = create_repo(payload)
     if repo_info:
@@ -330,16 +363,15 @@ def round1(payload: dict):
         
 
 def get_first_round_brief():
-    with open("round1_payload.json", "r") as f:
-        payload = json.load(f)
+    # NOW USES /tmp
+    payload = load_payload_from_tmp(1)
     return payload["brief"]
 
 #  round 2: Handle improvements, bug fixes, etc.
 def round2(payload: dict):
     print("🔄 Starting round 2 updates...")
     #  Save round 2 payload to file
-    with open("round2_payload.json", "w") as f:
-        json.dump(payload, f, indent=2)    
+    save_payload_to_tmp(2, payload)
     
     repo_name= payload["task"].lower()
     owner = payload["email"].split('@')[0]
@@ -355,3 +387,4 @@ def round2(payload: dict):
         update_file(repo_full_name, file, content)
     print("\n🔄 Project (round 2) updated successfully!")
     return evaluate_task(payload, {}, get_sha(), repo_full_name, 2)
+
