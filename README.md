@@ -5,3 +5,4 @@ Requirements:
 * uvicorn
 * FastAPI
 * Python
+* Google-Generativeai
