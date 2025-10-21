@@ -46,9 +46,3 @@ async def handle_task(payload: dict):
             return {"message": "🔄 Round 2 task completed and updates published into the repository."}
 
 
-# NOTE: You will run this application using the `uvicorn` command 
-# defined in your Dockerfile, not by executing this script directly 
-# in the deployed container.
-# CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
-
-
