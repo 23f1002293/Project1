@@ -364,7 +364,7 @@ def round1(payload: dict):
 
 def get_first_round_brief():
     # NOW USES /tmp
-    payload = load_payload_from_tmp(1)
+    payload = load_payload_from_tmp(1) 
     return payload["brief"]
 
 #  round 2: Handle improvements, bug fixes, etc.
