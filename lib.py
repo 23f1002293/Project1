@@ -5,6 +5,8 @@ import base64
 from fastapi import FastAPI
 import requests
 from google import generativeai as genai
+from google.cloud import storage
+
 
 # ==============================================================
 # 1. CONFIGURATION
