@@ -7,6 +7,7 @@ import requests
 from google import generativeai as genai
 from google.cloud import storage
 
+
 # ==============================================================
 # 1. CONFIGURATION
 # ==============================================================
@@ -19,51 +20,82 @@ GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
 if not GEMINI_API_KEY:
     raise ValueError("Please set the GEMINI_API_KEY environment variable")
 
-BUCKET_NAME = os.getenv("BUCKET_NAME")
-if not BUCKET_NAME:
-    raise ValueError("Please set the BUCKET_NAME environment variable")
-
-def get_bucket():
-    """Retrieves the GCS bucket."""
-    try:
-        storage_client = storage.Client()
-        return storage_client.get_bucket(BUCKET_NAME)
-    except Exception as e:
-        print(f"❌ Error getting bucket: {e}")
-        raise
-
 # --- Configure Gemini ---
 genai.configure(api_key=GEMINI_API_KEY)
 
 
 # --- GitHub API base URL ---
 API_URL = "https://api.github.com"
+storage_client = storage.Client()
+GCS_BUCKET_NAME = os.environ.get("GCS_BUCKET_NAME", "app-creator-475404.appspot.com")
 
 # ==============================================================
 # 2. GEMINI: GENERATE APP CODE FROM BRIEF
 # ==============================================================
-def save_payload_to_bucket(round_number: int, payload: dict):
-    """Saves the JSON payload for a specific round to Google Cloud Storage."""
-    filename = f"round{round_number}_payload.json"
+def save_payload_to_gcs(round_number: int, payload: dict):
+    """Saves the JSON payload for a specific round to a GCS bucket."""
+    
+    # Define the path within the GCS bucket
+    destination_blob_name = f"payloads/round{round_number}_payload.json"
+    
     try:
-        bucket = get_bucket()
-        blob = bucket.blob(filename)
-        blob.upload_from_string(json.dumps(payload, indent=2))
-        print(f"💾 Payload for Round {round_number} saved to GCS: gs://{BUCKET_NAME}/{filename}")
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(destination_blob_name)
+        
+        # Convert the payload to a JSON string and upload
+        json_payload = json.dumps(payload, indent=2)
+        blob.upload_from_string(json_payload, content_type="application/json")
+        
+        print(f"💾 Payload for Round {round_number} saved to GCS: gs://{GCS_BUCKET_NAME}/{destination_blob_name}")
     except Exception as e:
-        print(f"❌ Error writing to GCS: {e}")
+        print(f"❌ Error writing payload to GCS: {e}")
+        raise
 
-def load_payload_from_bucket(round_number: int):
-    """Loads the JSON payload for a specific round from Google Cloud Storage."""
-    filename = f"round{round_number}_payload.json"
+def load_payload_from_gcs(round_number: int):
+    """Loads the JSON payload for a specific round from a GCS bucket."""
+    
+    # Define the path within the GCS bucket
+    source_blob_name = f"payloads/round{round_number}_payload.json"
+    
     try:
-        bucket = get_bucket()
-        blob = bucket.blob(filename)
-        content = blob.download_as_text()
-        print(f"✅ Loaded payload for Round {round_number} from GCS: gs://{BUCKET_NAME}/{filename}")
+        bucket = storage_client.bucket(GCS_BUCKET_NAME)
+        blob = bucket.blob(source_blob_name)
+        
+        # Download the blob content as a string and parse JSON
+        content = blob.download_as_string().decode("utf-8")
+        
+        print(f"✅ Loaded payload for Round {round_number} from GCS: gs://{GCS_BUCKET_NAME}/{source_blob_name}")
         return json.loads(content)
     except Exception as e:
-        print(f"❌ Error reading from GCS: {e}")
+        print(f"❌ Error reading payload from GCS: {e}")
+        raise
+
+
+def save_payload_to_tmp(round_number: int, payload: dict):
+    """Saves the JSON payload for a specific round to the local /tmp directory."""
+    filename = f"/tmp/round{round_number}_payload.json"
+    
+    try:
+        with open(filename, "w") as f:
+            json.dump(payload, f, indent=2)
+        print(f"💾 Payload for Round {round_number} saved to ephemeral storage: {filename}")
+    except Exception as e:
+        print(f"❌ Error writing to /tmp: {e}")
+
+def load_payload_from_tmp(round_number: int):
+    """Loads the JSON payload for a specific round from the local /tmp directory."""
+    filename = f"/tmp/round{round_number}_payload.json"
+    
+    try:
+        with open(filename, "r") as f:
+            content = f.read()
+        print(f"✅ Loaded payload for Round {round_number} from ephemeral storage: {filename}")
+        return json.loads(content)
+    except FileNotFoundError:
+        # Raise an error if the payload for the first round is missing
+        raise FileNotFoundError(f"File {filename} not found in /tmp. Data may have been lost due to instance recycle.")
+    except Exception as e:
+        print(f"❌ Error reading from /tmp: {e}")
         raise
 
 def extract_json(text):
@@ -166,7 +198,8 @@ def upload_attachments(repo_full_name, attachments):
 def create_repo(payload):
     """Creates a new GitHub repository."""
     repo_name = payload["task"].lower()
-    repo_description = payload["brief"]
+    # repo_description = payload["brief"]
+    repo_description = repo_name
 
     url = f"{API_URL}/user/repos"
     headers = {
@@ -350,7 +383,7 @@ def evaluate_task(payload: dict, repo_info, sha, repo_full_name, round):
 
 def round1(payload: dict):
     #  Save round 1 payload to file
-    save_payload_to_bucket(1, payload)
+    save_payload_to_gcs(1, payload)
 
     repo_info = create_repo(payload)
     if repo_info:
@@ -375,14 +408,15 @@ def round1(payload: dict):
 
 def get_first_round_brief():
     # NOW USES /tmp
-    payload = load_payload_from_bucket(1) 
+    # payload = load_payload_from_tmp(1)
+    payload = load_payload_from_gcs(1)
     return payload["brief"]
 
 #  round 2: Handle improvements, bug fixes, etc.
 def round2(payload: dict):
     print("🔄 Starting round 2 updates...")
     #  Save round 2 payload to file
-    save_payload_to_bucket(2, payload)
+    save_payload_to_gcs(2, payload)
     
     repo_name= payload["task"].lower()
     owner = payload["email"].split('@')[0]
